@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "533718865800",
+    "project_id": "quran-partner",
+    "storage_bucket": "quran-partner.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:533718865800:android:26d19f8ca00cf6e3b20c3d",
+        "android_client_info": {
+          "package_name": "com.example.hifdhpartner"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "533718865800-pljjq4pliiv8lbmt6ekrmhgv8orlklng.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.hifdhpartner",
+            "certificate_hash": "eff25b86cdbe18449efccf15076c38686e2a7baf"
+          }
+        },
+        {
+          "client_id": "533718865800-koum4qsjg5ba58fae3t7fsj1ddinb2pu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEFytGZ9RzjI7MQq6w36avZlDFscrekvY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "533718865800-koum4qsjg5ba58fae3t7fsj1ddinb2pu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
