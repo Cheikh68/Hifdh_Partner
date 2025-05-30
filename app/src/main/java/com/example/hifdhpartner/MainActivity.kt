@@ -62,8 +62,6 @@ class MainActivity : ComponentActivity() {
         val isDatabasePopulated = sharedPreferences.getBoolean("isDatabasePopulated", false)
 
         if (!isDatabasePopulated) {
-            quranDatabaseHelper.insertQuranData(this)
-
             val finishVerseQuestions = loadFinishVerseQuestionsFromAssets(this)
             lifecycleScope.launch {
                 MyViewModel.populateFinishVerseQuestion(finishVerseQuestions)
