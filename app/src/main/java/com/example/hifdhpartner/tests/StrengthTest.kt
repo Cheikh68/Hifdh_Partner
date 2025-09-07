@@ -15,6 +15,10 @@ import androidx.navigation.NavController
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.text.style.TextAlign
 import android.widget.Toast
+import androidx.compose.foundation.gestures.rememberScrollableState
+import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Scaffold
@@ -29,122 +33,115 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import com.example.hifdhpartner.OtherScreens.BottomNavBar
 import com.example.hifdhpartner.OtherScreens.MainText
 import com.example.hifdhpartner.databases.QuranDatabaseHelper
 import com.example.hifdhpartner.databases.UserData
 import com.example.hifdhpartner.ViewModel
+import com.example.hifdhpartner.databases.Verse
+import com.example.hifdhpartner.databases.VerseRef
 
 
 @Composable
-fun StrengthTest(navController: NavController, databaseHelper: QuranDatabaseHelper, viewModel: ViewModel) {
-    // State variables
-    val userData by viewModel.userData.collectAsState()
+fun StrengthTest(navController: NavController, viewModel: ViewModel) {
     var currentSurah by remember { mutableStateOf<Pair<Int, String>?>(null) }
+    var currentVerseRef by remember { mutableStateOf(VerseRef(0, 0)) }
     var selectedSurah by remember { mutableStateOf<Int?>(null) }
     val context = LocalContext.current
 
-    // Initialize a random question from known surahs
+    // Load a random verse on first launch
     LaunchedEffect(Unit) {
-        userData?.knownSurahs?.takeIf { it.isNotEmpty() }?.let { knownSurahs ->
-            loadRandomQuestion(databaseHelper, userData?.knownSurahs.orEmpty()) { surah ->
-                currentSurah = surah
-                selectedSurah = null
-            }
+        viewModel.getRandomKnownVerse()?.let { (surah, verse) ->
+            currentVerseRef = VerseRef(surah.id, verse.id)
+            currentSurah = surah.id to verse.text
+            selectedSurah = null
         }
     }
 
     Scaffold(
-        bottomBar = { BottomNavBar(navController) } // Add Bottom Navigation Bar
+        bottomBar = { BottomNavBar(navController) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
                 .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
         ) {
             MainText("Strength Test")
-
             Spacer(modifier = Modifier.height(16.dp))
 
             if (currentSurah != null) {
-                // Display question
                 Text(
                     text = "From which chapter is this verse from?",
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.onPrimary // White text
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
-                Text(
-                    text = currentSurah!!.second,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 33.sp, lineHeight = 45.sp),
-                    modifier = Modifier.padding(vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.onPrimary // White text
-                )
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl){
+                    Text(
+                        text = "\"${currentSurah!!.second}\"",
+                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 28.sp, lineHeight = 45.sp),
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        textAlign = TextAlign.Right
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Surah Dropdown menu (show all surahs, but only ask questions from known surahs)
                 SurahDropdownMenu(
-                    userData = userData,
-                    databaseHelper = databaseHelper,
+                    viewModel = viewModel,
                     selectedSurah = selectedSurah,
                     onSurahSelected = { selectedId ->
                         selectedSurah = selectedId
-
-                        val correctSurahNumber = currentSurah!!.first
-
-                        if (selectedId == correctSurahNumber) {
+                        val result = viewModel.isCorrectAnswer(correct = currentVerseRef, userAnswerSurahId = selectedId)
+                        if (result) {
                             viewModel.updateQuestionStats(true)
-                            Toast.makeText(
-                                context,
-                                "Correct! 🎉",
-                                Toast.LENGTH_SHORT
-                            ).show()
-
-                            loadRandomQuestion(databaseHelper, userData?.knownSurahs.orEmpty()) { surah ->
-                                currentSurah = surah
-                                selectedSurah = null
-                            }
+                            Toast.makeText(context, "Correct! 🎉", Toast.LENGTH_SHORT).show()
                         } else {
                             viewModel.updateQuestionStats(false)
-                            Toast.makeText(
-                                context,
-                                "Wrong! Try again.",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            Toast.makeText(context, "Wrong! Try again.", Toast.LENGTH_SHORT).show()
+                            return@SurahDropdownMenu
+                        }
+
+                        // Load next question
+                        viewModel.getRandomKnownVerse()?.let { (surah, verse) ->
+                            currentVerseRef = VerseRef(surah.id, verse.id)
+                            currentSurah = surah.id to verse.text
+                            selectedSurah = null
                         }
                     }
                 )
 
-
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Skip button
                 TextButton(
                     onClick = {
-                        loadRandomQuestion(databaseHelper, userData?.knownSurahs.orEmpty()) { surah ->
-                            currentSurah = surah
+                        viewModel.getRandomKnownVerse()?.let { (surah, verse) ->
+                            currentVerseRef = VerseRef(surah.id, verse.id)
+                            currentSurah = surah.id to verse.text
                             selectedSurah = null
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text ="Skip",
-                        color = MaterialTheme.colorScheme.onPrimary // White text
-                    )
+                    Text("Skip", color = MaterialTheme.colorScheme.onPrimary)
                 }
+
             } else {
-                // Fallback if no known Surahs
                 Text(
-                    text = "You have no known Surahs. Add some to start the quiz.",
+                    text = "You have no known verses. Mark some to start the quiz.",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.onPrimary // White text
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
@@ -155,12 +152,10 @@ fun StrengthTest(navController: NavController, databaseHelper: QuranDatabaseHelp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SurahDropdownMenu(
-    userData: UserData?,
-    databaseHelper: QuranDatabaseHelper,
-    selectedSurah: Int?, // Int now
-    onSurahSelected: (Int) -> Unit // Callback with Int
+    viewModel: ViewModel,
+    selectedSurah: Int?,
+    onSurahSelected: (Int) -> Unit
 ) {
-    val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
 
     ExposedDropdownMenuBox(
@@ -170,7 +165,7 @@ fun SurahDropdownMenu(
         OutlinedTextField(
             value = selectedSurah?.let { surahId ->
                 // Show selected surah's transliteration name
-                databaseHelper.getSurahById(surahId)?.transliteration ?: "Select Surah"
+                viewModel.getSurahById(surahId)?.transliteration ?: "Select Surah"
             } ?: "Select Surah",
             onValueChange = {},
             readOnly = true,
@@ -187,32 +182,20 @@ fun SurahDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            databaseHelper.getAllSurahs().forEach { surah ->
+            viewModel.getAllSurahs().forEach { surah ->
                 DropdownMenuItem(
                     text = { Text("${surah.id} - ${surah.transliteration} (${surah.name})") },
                     onClick = {
-                        onSurahSelected(surah.id) // 🔥 send surah.id directly
+                        onSurahSelected(surah.id) // send surah.id directly
                         expanded = false
                     }
                 )
+                HorizontalDivider(
+                    modifier = Modifier.padding(vertical = 4.dp),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                )
             }
-        }
-    }
-}
-
-
-
-fun loadRandomQuestion(
-    databaseHelper: QuranDatabaseHelper,
-    knownSurahs: List<Int>,
-    onSurahLoaded: (Pair<Int, String>) -> Unit
-) {
-    if (knownSurahs.isNotEmpty()) {
-        val randomSurahId = knownSurahs.random()
-        val verses = databaseHelper.getVersesFromSurah(randomSurahId)
-        if (verses.isNotEmpty()) {
-            val randomVerse = verses.random()
-            onSurahLoaded(Pair(randomSurahId, randomVerse))
         }
     }
 }

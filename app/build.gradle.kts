@@ -56,7 +56,6 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -77,6 +76,7 @@ dependencies {
     implementation(libs.firebase.auth.ktx)
     implementation(libs.firebase.firestore.ktx)
     implementation(libs.androidx.benchmark.macro)
+    implementation (libs.androidx.material.icons.extended)
 
     ksp(libs.androidx.room.compiler)
     implementation("androidx.hilt:hilt-navigation-fragment:1.0.0")

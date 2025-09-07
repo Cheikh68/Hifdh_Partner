@@ -5,24 +5,24 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.example.hifdhpartner.Helpers.MutashaabihaatConverters
 import com.example.hifdhpartner.Helpers.StringListConverter
 
-
-@Database(entities = [FinishVerseQuestion::class], version = 1, exportSchema = false)
-@TypeConverters(StringListConverter::class)
-abstract class FinishVerseDatabase : RoomDatabase() {
-    abstract fun finishVerseDao(): FinishVerseDao
+@Database(entities = [MutashaabihaatQuestion::class], version = 1)
+@TypeConverters(MutashaabihaatConverters::class)
+abstract class MutashaabihaatDatabase : RoomDatabase() {
+    abstract fun MutashaabihaatDao(): MutashaabihaatDao
 
     companion object {
         @Volatile
-        private var INSTANCE: FinishVerseDatabase? = null
+        private var INSTANCE: MutashaabihaatDatabase? = null
 
-        fun getInstance(context: Context): FinishVerseDatabase {
+        fun getInstance(context: Context): MutashaabihaatDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
-                    FinishVerseDatabase::class.java,
-                    "finish_verse_database"
+                    MutashaabihaatDatabase::class.java,
+                    "mutashaabihaat_database"
                 ).build()
                 INSTANCE = instance
                 instance

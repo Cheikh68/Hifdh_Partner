@@ -27,10 +27,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.compose.material.icons.filled.MenuBook
+import com.example.hifdhpartner.ViewModel
 
 
 @Composable
-fun MainScreen(navController: NavController) {
+fun MainScreen(navController: NavController, viewModel: ViewModel) {
     Scaffold(
         bottomBar = { BottomNavBar(navController) } // Add Bottom Navigation Bar
     ) { paddingValues ->
@@ -68,7 +70,10 @@ fun MainScreen(navController: NavController) {
                     item { FeatureButton("Strength test") { navController.navigate("strentest") } }
                     item { FeatureButton("Comprehension test") { navController.navigate("comptest") } }
                     item { FeatureButton("Mutashaabihaat") { navController.navigate("mutashaabtest") } }
-                    item { FeatureButton("Finish the verse") { navController.navigate("finishtest") } }
+                    item { FeatureButton("Finish the verse") {
+                        viewModel.filterToKnownVersesOnly() // <-- filter first
+                        navController.navigate("finishtest")
+                    } }
                 }
             }
         }
@@ -131,7 +136,7 @@ fun FeatureButton(text: String, onClick: () -> Unit) {
 fun BottomNavBar(navController: NavController) {
     val items = listOf(
         BottomNavItem("main", Icons.Default.Home, "Home"),
-        BottomNavItem("suggestions", Icons.Default.Favorite, "Donate"),
+        BottomNavItem("reading", Icons.Filled.MenuBook, "Reading"),
         BottomNavItem("userprofile", Icons.Default.Person, "Profile"),
         BottomNavItem("settings", Icons.Default.Settings, "Settings")
     )
@@ -144,7 +149,7 @@ fun BottomNavBar(navController: NavController) {
                 icon = { Icon(item.icon, contentDescription = item.label, tint = MaterialTheme.colorScheme.onSurface) },
                 label = { Text(item.label, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp) },
                 selected = currentRoute == item.route,
-                onClick = { navController.navigate(item.route) }
+                onClick = { if(currentRoute != item.route) navController.navigate(item.route) }
             )
         }
     }

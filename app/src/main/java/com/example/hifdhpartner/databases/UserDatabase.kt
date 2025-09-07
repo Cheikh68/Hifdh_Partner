@@ -6,10 +6,13 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.example.hifdhpartner.Helpers.IntListConverter
+import com.example.hifdhpartner.Helpers.SortedIntSetConverter
+import com.example.hifdhpartner.Helpers.StringListConverter
+import com.example.hifdhpartner.Helpers.VerseRefListConverter
 
 
 @Database(entities = [UserData::class], version = 1, exportSchema = false)
-@TypeConverters(IntListConverter::class)
+@TypeConverters(IntListConverter::class, VerseRefListConverter::class, SortedIntSetConverter::class, StringListConverter::class)
 abstract class UserDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
 

@@ -6,7 +6,6 @@ import com.google.gson.reflect.TypeToken
 
 
 class StringListConverter {
-
     // Convert the List<String> to a single String (for storage)
     @TypeConverter
     fun fromStringList(value: List<String>?): String? {

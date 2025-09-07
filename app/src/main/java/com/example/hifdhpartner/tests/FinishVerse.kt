@@ -34,7 +34,12 @@ import androidx.navigation.NavController
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import com.example.hifdhpartner.OtherScreens.BottomNavBar
 import com.example.hifdhpartner.databases.FinishVerseQuestion
 import com.example.hifdhpartner.OtherScreens.MainText
@@ -43,7 +48,7 @@ import com.example.hifdhpartner.ViewModel
 
 
 @Composable
-fun FinishVerse(navController: NavController, databaseHelper: QuranDatabaseHelper, viewModel: ViewModel) {
+fun FinishVerse(navController: NavController, viewModel: ViewModel) {
     val userData by viewModel.userData.collectAsState()
     var currentQuestion by remember { mutableStateOf<FinishVerseQuestion?>(null) }
     var options by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -51,15 +56,18 @@ fun FinishVerse(navController: NavController, databaseHelper: QuranDatabaseHelpe
     var isOptionsRevealed by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    // Initialize a random question from known surahs
+    // Load answer pools if not already loaded
     LaunchedEffect(Unit) {
-        userData?.knownSurahs?.takeIf { it.isNotEmpty() }?.let { knownSurahs ->
-            val randomQuestion = viewModel.getRandomFinishVerseQuestion(knownSurahs)
-            if (randomQuestion != null) {
-                currentQuestion = randomQuestion
-                options = viewModel.generateQuestionOptions(randomQuestion) // This should generate the 4 options
-                selectedOption = null
-            }
+        if (viewModel.answerPools.isEmpty()) {
+            viewModel.answerPools = viewModel.loadAnswerPools(context)
+        }
+
+        // Load a random question
+        val question = viewModel.getRandomFinishVerseQuestionFromKnownVerses()
+        if (question != null) {
+            currentQuestion = question
+            options = viewModel.generateQuestionOptions(question)
+            selectedOption = null
         }
     }
 
@@ -72,33 +80,35 @@ fun FinishVerse(navController: NavController, databaseHelper: QuranDatabaseHelpe
                 .padding(16.dp)
                 .padding(paddingValues)
         ) {
-            // Main text
             MainText("Finish the Verse")
-
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Check if a question has been loaded
             if (currentQuestion != null) {
-                // Display the prompt (the start of the verse)
-                Text(
-                    text = currentQuestion!!.prompt,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 33.sp, lineHeight = 45.sp),
-                    modifier = Modifier.padding(vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
+                // Show verse prompt
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                    Text(
+                        text = currentQuestion!!.prompt,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 33.sp, lineHeight = 45.sp),
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        textAlign = TextAlign.Right
+                    )
+                }
 
-                // Reveal options button
-                Button(onClick = { isOptionsRevealed = true }) {
+                // Reveal Options Button
+                Button(onClick = {
+                    isOptionsRevealed = true
+                    selectedOption = null
+                }) {
                     Text("Reveal Options")
                 }
 
-                // Show options if revealed
                 if (isOptionsRevealed) {
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Display the options in a grid
+                    // Options Grid
                     LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),  // This will create 2 columns
+                        columns = GridCells.Fixed(2),
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -108,14 +118,12 @@ fun FinishVerse(navController: NavController, databaseHelper: QuranDatabaseHelpe
                                 option = option,
                                 onClick = {
                                     val isCorrect = option == currentQuestion!!.correctAnswer
-                                    if (isCorrect) {
-                                        viewModel.updateQuestionStats(true)
-                                        Toast.makeText(context, "Correct! 🎉", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        viewModel.updateQuestionStats(false)
-                                        Toast.makeText(context, "Wrong! Try again.", Toast.LENGTH_SHORT).show()
-                                    }
-                                    // Update the button background color based on correctness
+                                    viewModel.updateQuestionStats(isCorrect)
+                                    Toast.makeText(
+                                        context,
+                                        if (isCorrect) "Correct! 🎉" else "Wrong! Try again.",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                     selectedOption = option
                                 },
                                 selectedOption = selectedOption,
@@ -127,16 +135,14 @@ fun FinishVerse(navController: NavController, databaseHelper: QuranDatabaseHelpe
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Skip button
+                // Skip Button
                 TextButton(
                     onClick = {
-                        // Launch a coroutine to fetch a random question
-                        userData?.knownSurahs?.takeIf { it.isNotEmpty() }?.let { knownSurahs ->
-                            // Launch a coroutine to call suspend function
+                        if (viewModel.knowsVerses()) {
                             viewModel.viewModelScope.launch {
-                                val randomQuestion = viewModel.getRandomFinishVerseQuestion(knownSurahs)
-                                currentQuestion = randomQuestion
-                                options = randomQuestion?.let { viewModel.generateQuestionOptions(it) } ?: emptyList()
+                                val newQuestion = viewModel.getRandomFinishVerseQuestionFromKnownVerses()
+                                currentQuestion = newQuestion
+                                options = newQuestion?.let { viewModel.generateQuestionOptions(it) } ?: emptyList()
                                 selectedOption = null
                                 isOptionsRevealed = false
                             }
@@ -150,9 +156,9 @@ fun FinishVerse(navController: NavController, databaseHelper: QuranDatabaseHelpe
                     )
                 }
             } else {
-                // Fallback if no known Surahs
+                // No eligible questions
                 Text(
-                    text = "You have no known Surahs. Add some to start the quiz.",
+                    text = "You have no eligible questions for your known verses. Add more known verses or try again later.",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),

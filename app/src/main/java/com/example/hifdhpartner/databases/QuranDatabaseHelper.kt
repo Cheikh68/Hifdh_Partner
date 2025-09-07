@@ -14,17 +14,11 @@ class QuranDatabaseHelper(private val context: Context) : SQLiteOpenHelper(conte
         private const val DATABASE_VERSION = 1
     }
 
-    override fun onCreate(db: SQLiteDatabase?) {
-        // No-op: we're using a pre-populated database from assets
-    }
+    override fun onCreate(db: SQLiteDatabase?) {}
 
-    override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
-        // No-op: handle upgrades manually if needed
-    }
+    override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {}
 
-    init {
-        copyDatabaseIfNeeded()
-    }
+    init { copyDatabaseIfNeeded() }
 
     private fun copyDatabaseIfNeeded() {
         val dbPath = context.getDatabasePath(DATABASE_NAME)
@@ -66,20 +60,6 @@ class QuranDatabaseHelper(private val context: Context) : SQLiteOpenHelper(conte
         return surahs
     }
 
-    fun getVersesFromSurah(surahId: Int): List<String> {
-        val verses = mutableListOf<String>()
-        val db = readableDatabase
-        val cursor = db.rawQuery(
-            "SELECT text FROM Verse WHERE surah_id = ? ORDER BY id ASC",
-            arrayOf(surahId.toString())
-        )
-        while (cursor.moveToNext()) {
-            verses.add(cursor.getString(0))
-        }
-        cursor.close()
-        return verses
-    }
-
     fun getSurahById(id: Int): Surah? {
         val db = readableDatabase
         val cursor = db.query("Surah", null, "id = ?", arrayOf(id.toString()), null, null, null)
@@ -110,7 +90,8 @@ class QuranDatabaseHelper(private val context: Context) : SQLiteOpenHelper(conte
                 Verse(
                     id = cursor.getInt(cursor.getColumnIndexOrThrow("id")),
                     text = cursor.getString(cursor.getColumnIndexOrThrow("text")),
-                    translation = cursor.getString(cursor.getColumnIndexOrThrow("translation"))
+                    translation = cursor.getString(cursor.getColumnIndexOrThrow("translation")),
+                    page_number = cursor.getInt(cursor.getColumnIndexOrThrow("page_number"))
                 )
             )
         }
@@ -118,27 +99,30 @@ class QuranDatabaseHelper(private val context: Context) : SQLiteOpenHelper(conte
         return verses
     }
 
-    fun getVerseById(surahId: Int, verseId: Int): Verse? {
+    fun getSurahSummaries(): List<Pair<Int, String>> {
         val db = readableDatabase
-        val cursor = db.query(
-            "Verse",
-            null,
-            "surah_id = ? AND id = ?",
-            arrayOf(surahId.toString(), verseId.toString()),
-            null, null, null
-        )
-        return if (cursor.moveToFirst()) {
-            val verse = Verse(
-                id = cursor.getInt(cursor.getColumnIndexOrThrow("id")),
-                text = cursor.getString(cursor.getColumnIndexOrThrow("text")),
-                translation = cursor.getString(cursor.getColumnIndexOrThrow("translation"))
-            )
-            cursor.close()
-            verse
-        } else {
-            cursor.close()
-            null
+        val cursor = db.query("Surah", arrayOf("id", "transliteration"), null, null, null, null, "id ASC")
+        val result = mutableListOf<Pair<Int, String>>()
+
+        while (cursor.moveToNext()) {
+            val id = cursor.getInt(cursor.getColumnIndexOrThrow("id"))
+            val transliteration = cursor.getString(cursor.getColumnIndexOrThrow("transliteration"))
+            result.add(id to transliteration)
         }
+
+        cursor.close()
+        return result
+    }
+
+    fun getVerseIdToPageMap(): Map<Int, Int> {
+        val db = readableDatabase
+        val cursor = db.query("Verse", arrayOf("id", "page_number"), null, null, null, null, null)
+        val map = mutableMapOf<Int, Int>()
+        while (cursor.moveToNext()) {
+            map[cursor.getInt(0)] = cursor.getInt(1)
+        }
+        cursor.close()
+        return map
     }
 }
 
@@ -150,11 +134,16 @@ data class Surah(
     val translation: String,
     val type: String,
     val total_verses: Int,
-    val verses: List<Verse>  // List of verses in the Surah
+    val verses: List<Verse>
 )
 
 data class Verse(
     val id: Int,
     val text: String,
-    val translation: String
+    val translation: String,
+    val page_number: Int
 )
+
+data class VerseRef(val surahId: Int, val verseId: Int)
+
+data class RepeatEntry(val text: String, val refs: List<VerseRef>)
